@@ -3,6 +3,7 @@ var cors = require('cors')
 var morgan = require('morgan')
 var bodyParser = require('body-parser')
 const axios = require("axios")
+let dal = require ('wtr-dal'); 
 
 const db = require('./db')
 var app = express()
@@ -21,5 +22,3 @@ app.listen(3000, function(){
 
 let getData = require("./data/yandex.js"); 
 getData.getforecast(55.75396, 37.620393);
-//52.29778, 104.29639 - Иркутск
-//55.75396, 37.620393 - Москва

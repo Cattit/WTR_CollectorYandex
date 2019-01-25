@@ -8,6 +8,7 @@
     "cors": "^2.8.5",
     "express": "^4.16.4",
     "morgan": "^1.9.1",
+    "nodemon": "^1.18.9",
     "pg": "^7.8.0"
   },
   "devDependencies": {},
@@ -24,8 +25,8 @@
   "bugs": {
     "url": "https://github.com/Cattit/WTR_CollectorYandex/issues"
   },
-  "homepage": "https://github.com/Cattit/WTR_CollectorYandex#readme",  
+  "homepage": "https://github.com/Cattit/WTR_CollectorYandex#readme",
   "links": {
-      "local-package": "link:./lib/wtr-dal"
-  }   
+    "local-package": "link:./lib/wtr-dal"
+  }
 }

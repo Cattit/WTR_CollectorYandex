@@ -2,13 +2,14 @@ const axios = require("axios");
 let dal = require("wtr-dal");
 let source = "yandex"
 const dateNow = new Date()
+dateNow.setHours(0, 0, 0, 000)
 
 function dateDay(amount_day) {
   return {
     now: dateNow,
     date_start: new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate() + amount_day, 12),
     date_end: new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate() + amount_day, 23, 59, 59, 999),
-    type: "day"
+    type_day: "day"
   }
 }
 
@@ -17,20 +18,32 @@ function dateNight(amount_day) {
     now: dateNow,
     date_start: new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate() + amount_day, 00),
     date_end: new Date(dateNow.getFullYear(), dateNow.getMonth(), dateNow.getDate() + amount_day, 11, 59, 59, 999),
-    type: "night"
+    type_day: "night"
   }
 }
 
-function rainfall(weather) {  // не возвоащает инфу о яп, только о дожде, снеге и снеге с дождем
+function rainfall(weather1, weather2, wind, temperature, amount_rainfall) {  // не возвращает инфу о яп, только о дожде, снеге и снеге с дождем
+  let weather = ""  // 3 снег, 1 дождь, 2 дождь со снегом
+  if ((weather1 === 3 && weather2 !== 1 && weather2 !== 2) || (weather2 === 3 && weather1 !== 1 && weather1 !== 2))
+    weather = "snow"
+  if ((weather1 === 1 && weather2 !== 3 && weather2 !== 2) || (weather2 === 1 && weather1 !== 3 && weather1 !== 2))
+    weather = "rain"
+  if (weather1 === 2 || weather2 === 2 || (weather1 === 3 && weather2 === 1) || (weather1 === 1 && weather2 === 3))
+    weather = "rainsnow"
   return {
-    snow: weather === 3 ? 1 : 0,
-    rain: weather === 1 ? 1 : 0,
-    sand: 0,
-    squall: 0,
-    mist: 0,
-    storm: 0,
-    drizzle: 0,
-    rainsnow: weather === 2 ? 1 : 0
+    snow: weather === "snow" ? 1 : 0,
+    rain: weather === "rain" ? 1 : 0,
+    sand: null,
+    squall: null,
+    mist: null,
+    storm: null,
+    drizzle: null,
+    rainsnow: weather === "rainsnow" ? 1 : 0,
+    grad: null,
+    hard_wind: wind >= 15 ? 1 : 0,
+    hard_heat: (dateNow.getMonth() >= 3 && dateNow.getMonth() <= 8 && temperature >= 40) ? 1 : 0,
+    hard_frost: ((dateNow.getMonth() >= 9 || dateNow.getMonth() <= 2) && temperature <= -35) ? 1 : 0,
+    hard_rainfall: ((weather === "snow" && amount_rainfall >= 7) || amount_rainfall >= 15) ? 1 : 0 // если снега не менее 7 мм или осадков не менее 15 мм
   }
 }
 
@@ -81,7 +94,14 @@ function cloudness(type) {
 async function analyzeData({ info, forecasts }) {
   let dataAll = [];
   const { lat, lon } = info;
-  for (let dd = 1, i = 0; dd < 6; dd += 2, i++) {
+  for (let dd = 1; dd < 6; dd += 2) {
+
+    let temperature = Math.max(forecasts[dd].parts.day.temp_max, forecasts[dd].parts.evening.temp_max),
+      wind_speed_from = Math.min(forecasts[dd].parts.day.wind_speed, forecasts[dd].parts.evening.wind_speed),
+      wind_speed_to = Math.max(forecasts[dd].parts.day.wind_speed, forecasts[dd].parts.evening.wind_speed),
+      wind_gust = Math.max(forecasts[dd].parts.day.wind_gust, forecasts[dd].parts.evening.wind_gust),
+      amount_rainfall = forecasts[dd].parts.day.prec_mm + forecasts[dd].parts.evening.prec_mm
+
     dataAll.push(
       {
         source,
@@ -89,16 +109,22 @@ async function analyzeData({ info, forecasts }) {
         lon,
         depth_forecast: dd,
         date: dateDay(dd),
-        temperature: forecasts[dd].parts.day_short.temp,
+        temperature: temperature,
         wind_speed: {
-          from: forecasts[dd].parts.day_short.wind_speed,
-          to: forecasts[dd].parts.day_short.wind_speed
+          from: wind_speed_from,
+          to: wind_speed_to
         },
-        wind_gust: forecasts[dd].parts.day_short.wind_gust,
-        rainfall: rainfall(forecasts[dd].parts.day_short.prec_type),
-        amount_rainfall: forecasts[dd].parts.day_short.prec_mm
+        wind_gust: wind_gust,
+        amount_rainfall: amount_rainfall,
+        rainfall: rainfall(forecasts[dd].parts.day.prec_type, forecasts[dd].parts.evening.prec_type, Math.max(wind_speed_from, wind_speed_to, wind_gust), temperature, amount_rainfall)
       }
     )
+
+    temperature = Math.min(forecasts[dd].parts.night.temp_min, forecasts[dd].parts.morning.temp_min)
+    wind_speed_from = Math.min(forecasts[dd].parts.night.wind_speed, forecasts[dd].parts.morning.wind_speed)
+    wind_speed_to = Math.max(forecasts[dd].parts.night.wind_speed, forecasts[dd].parts.morning.wind_speed)
+    wind_gust = Math.max(forecasts[dd].parts.night.wind_gust, forecasts[dd].parts.morning.wind_gust)
+    amount_rainfall = forecasts[dd].parts.night.prec_mm + forecasts[dd].parts.morning.prec_mm
 
     dataAll.push(
       {
@@ -107,32 +133,28 @@ async function analyzeData({ info, forecasts }) {
         lon,
         depth_forecast: dd,
         date: dateNight(dd),
-        temperature: forecasts[dd].parts.night_short.temp,
+        temperature: temperature,
         wind_speed: {
-          from: forecasts[dd].parts.night_short.wind_speed,
-          to: forecasts[dd].parts.night_short.wind_speed
+          from: wind_speed_from,
+          to: wind_speed_to
         },
-        wind_gust: forecasts[dd].parts.night_short.wind_gust,
-        rainfall: rainfall(forecasts[dd].parts.night_short.prec_type),
-        amount_rainfall: forecasts[dd].parts.night_short.prec_mm
+        wind_gust: wind_gust,
+        amount_rainfall: amount_rainfall,
+        rainfall: rainfall(forecasts[dd].parts.night.prec_type, forecasts[dd].parts.morning.prec_type, Math.max(wind_speed_from, wind_speed_to, wind_gust), temperature, amount_rainfall)
       }
     )
 
   }
-  // console.log(dataAll)
-  await dal.saveForecast(source, dateNow);
-  Promise.all(dataAll.map(forecast => dal.saveMeteoData(forecast)))
-    .then(() => console.log("Successfully sent data from Yandex"))
-    .catch(error => console.log("Error sending data from Yandex"))
 
+  return dataAll
 }
 
 function getforecast(newlat, newlon) {
-  axios({
+  return axios({
     method: "get",
     url: "https://api.weather.yandex.ru/v1/forecast",
     headers: {
-      "X-Yandex-API-Key": "5e758c97-9f5b-4f63-a72b-b5c4e0624e90"
+      "X-Yandex-API-Key": "f440d663-6374-4f1a-80b9-0a7646eef206"
     },
     params: {
       lat: newlat,
@@ -145,7 +167,7 @@ function getforecast(newlat, newlon) {
   })
     .then(res => {
       // console.log(res.data);
-      analyzeData(res.data);
+      return analyzeData(res.data);
     })
     .catch(err => console.log(err));
 }

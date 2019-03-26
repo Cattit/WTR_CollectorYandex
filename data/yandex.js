@@ -1,6 +1,5 @@
 const axios = require("axios");
-let dal = require("wtr-dal");
-let source = "yandex"
+const dal = require("wtr-dal");
 const dateNow = new Date()
 dateNow.setHours(0, 0, 0, 000)
 
@@ -91,7 +90,7 @@ function cloudness(type) {
   }
 }
 
-async function analyzeData({ info, forecasts }) {
+async function analyzeData({ info, forecasts }, id_source) {
   let dataAll = [];
   const { lat, lon } = info;
   for (let dd = 1; dd < 6; dd += 2) {
@@ -104,7 +103,7 @@ async function analyzeData({ info, forecasts }) {
 
     dataAll.push(
       {
-        source,
+        id_source,
         lat,
         lon,
         depth_forecast: dd,
@@ -128,7 +127,7 @@ async function analyzeData({ info, forecasts }) {
 
     dataAll.push(
       {
-        source,
+        id_source,
         lat,
         lon,
         depth_forecast: dd,
@@ -149,12 +148,12 @@ async function analyzeData({ info, forecasts }) {
   return dataAll
 }
 
-function getforecast(newlat, newlon) {
+function getforecast(url_api, newlat, newlon, id_source) {
   return axios({
     method: "get",
-    url: "https://api.weather.yandex.ru/v1/forecast",
+    url: url_api,  //"https://api.weather.yandex.ru/v1/forecast"
     headers: {
-      "X-Yandex-API-Key": "f440d663-6374-4f1a-80b9-0a7646eef206"
+      "X-Yandex-API-Key": "73f4d332-aa05-4bdf-a818-e73c157e8303"
     },
     params: {
       lat: newlat,
@@ -166,8 +165,7 @@ function getforecast(newlat, newlon) {
     }
   })
     .then(res => {
-      // console.log(res.data);
-      return analyzeData(res.data);
+      return analyzeData(res.data, id_source);
     })
     .catch(err => console.log(err));
 }

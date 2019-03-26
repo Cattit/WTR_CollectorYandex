@@ -1,15 +1,21 @@
-let getData = require("./data/yandex.js");
-let dal = require("wtr-dal");
-// let dataForecast = getData.getforecast(52.29778, 104.29639);
+const getData = require("./data/yandex.js");
+const dal = require("wtr-dal");
+// const source = "yandex"
+const id_source = 0
+const dateNow = new Date()
+dateNow.setHours(0, 0, 0, 000)
 
 async function startDataСollection() {
-    let lat = 52.29778
-    let lon = 104.29639
-    const dataAll = await getData.getforecast(lat, lon);
-    const forecastId = await dal.saveForecast(dataAll[0].source, dataAll[0].date.now);
-    const locationId = await dal.getIdLocationByCoords(lat, lon)
-    // console.log(dataAll)
-    await dataAll.map(forecast => dal.saveForecastData(forecast, forecastId, locationId));
+    const id_forecast = await dal.saveForecast(id_source, dateNow);
+    const masLocation = await dal.getAllLocationCoordsId()
+    const url_api = await dal.getUrlApi(id_source)
+    for (var i = 0; i < masLocation.length; i++) {
+        let lat = masLocation[i].lat
+        let lon = masLocation[i].lon
+        let id_location = masLocation[i].id
+        const dataAll = await getData.getforecast(url_api, lat, lon, id_source);
+        await dataAll.map(forecast => dal.saveForecastData(forecast, id_forecast, id_location));
+    }
 }
 
 startDataСollection();

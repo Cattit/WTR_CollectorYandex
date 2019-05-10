@@ -153,7 +153,7 @@ function getforecast(url_api, newlat, newlon, id_source) {
     method: "get",
     url: url_api,  //"https://api.weather.yandex.ru/v1/forecast"
     headers: {
-      "X-Yandex-API-Key": "73f4d332-aa05-4bdf-a818-e73c157e8303"
+      "X-Yandex-API-Key": "ff54ce6d-704f-49b2-b80a-a8a141210495"
     },
     params: {
       lat: newlat,
